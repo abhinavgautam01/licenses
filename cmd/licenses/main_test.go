@@ -132,6 +132,52 @@ func TestRunJSON(t *testing.T) {
 	}
 }
 
+func TestRunJSONFallsBackToLatin1ForMalformedUTF16(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name string
+		bom  []byte
+	}{
+		{name: "UTF-16LE", bom: []byte{0xff, 0xfe}},
+		{name: "UTF-16BE", bom: []byte{0xfe, 0xff}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			license := projectLicense(t)
+			data := slices.Clone(test.bom)
+			data = append(data, 'x')
+			if (len(data)-len(test.bom)+len(license))%2 == 0 {
+				data = append(data, 'x')
+			}
+			data = append(data, license...)
+			path := filepath.Join(t.TempDir(), "LICENSE")
+			writeTestFile(t, path, data)
+
+			var stdout, stderr bytes.Buffer
+			exitCode, err := run(context.Background(), []string{"-json", path}, &stdout, &stderr, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if exitCode != exitSuccess {
+				t.Errorf("exit code = %d, want %d", exitCode, exitSuccess)
+			}
+			var report scanReport
+			if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+				t.Fatalf("decode output: %v\n%s", err, stdout.String())
+			}
+			if len(report.Files) != 1 || !hasMITExpression(report.Files[0]) {
+				t.Fatalf("files = %#v, want MIT detection", report.Files)
+			}
+			if report.Files[0].Encoding != "iso-8859-1" {
+				t.Errorf("encoding = %q, want iso-8859-1", report.Files[0].Encoding)
+			}
+			if stderr.Len() != 0 {
+				t.Errorf("stderr = %q, want empty", stderr.String())
+			}
+		})
+	}
+}
+
 func TestRunJSONReportsEmptyRolesAndNonRootExpression(t *testing.T) {
 	t.Parallel()
 

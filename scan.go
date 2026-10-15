@@ -865,6 +865,10 @@ func growReadBuffer(file *os.File, data *bytes.Buffer, maximum int64) {
 }
 
 func decodeText(data []byte, detection magic.Result) decodedText {
+	if detection.Kind == magic.KindUnknown &&
+		detection.Reason == magic.ReasonInvalidText {
+		return decodeLatin1(data)
+	}
 	switch detection.Encoding {
 	case encodingUTF8:
 		if !bytes.HasPrefix(data, []byte{0xef, 0xbb, 0xbf}) {
@@ -879,10 +883,6 @@ func decodeText(data []byte, detection magic.Result) decodedText {
 		return decodeUTF16(data, binary.LittleEndian, encodingUTF16LE)
 	case encodingUTF16BE:
 		return decodeUTF16(data, binary.BigEndian, encodingUTF16BE)
-	}
-	if detection.Kind == magic.KindUnknown &&
-		detection.Reason == magic.ReasonInvalidText {
-		return decodeLatin1(data)
 	}
 	return decodedText{data: data, encoding: encodingUTF8}
 }

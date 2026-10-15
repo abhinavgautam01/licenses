@@ -1531,10 +1531,11 @@ func TestReadScannableFileClassification(t *testing.T) {
 			encoding: "utf-16be",
 		},
 		{
-			name:   "malformed UTF-16",
-			data:   []byte{0xff, 0xfe, 'x'},
-			kind:   magic.KindUnknown,
-			reason: magic.ReasonInvalidText,
+			name:     "malformed UTF-16",
+			data:     []byte{0xff, 0xfe, 'x'},
+			kind:     magic.KindUnknown,
+			encoding: "utf-16le",
+			reason:   magic.ReasonInvalidText,
 		},
 		{
 			name:   "invalid UTF-8",
